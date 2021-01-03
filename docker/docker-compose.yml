@@ -1,0 +1,71 @@
+version: '3'
+services:
+    boulder:
+        # To minimize fetching this should be the same version used below
+        image: patsys/boulder 
+        environment:
+            - FAKE_DNS=10.77.77.77
+            - BOULDER_CONFIG_DIR=test/config
+            - GOFLAGS=-mod=vendor
+            # This is required so Python doesn't throw an error when printing
+            # non-ASCII to stdout.
+            - PYTHONIOENCODING=utf-8
+            # These are variables you can set to affect what tests get run or
+            # how they are run. Including them here with no value means they are
+            # passed through from the environment.
+            - RUN
+            - INT_FILTER
+            - RACE
+        networks:
+          bluenet:
+            ipv4_address: 10.77.77.77
+            aliases:
+              - sa.boulder
+              - ca.boulder
+              - ra.boulder
+              - va.boulder
+              - publisher.boulder
+              - ocsp-updater.boulder
+              - admin-revoker.boulder
+              - nonce.boulder
+        # Use sd-test-srv as a backup to Docker's embedded DNS server
+        # (https://docs.docker.com/config/containers/container-networking/#dns-services).
+        # If there's a name Docker's DNS server doesn't know about, it will
+        # forward the query to this IP (running sd-test-srv). We have
+        # special logic there that will return multiple IP addresses for
+        # service names.
+        dns: 10.77.77.77
+        ports:
+          - 4000:4000 # ACME
+          - 4001:4001 # ACMEv2
+          - 4002:4002 # OCSP
+          - 4003:4003 # OCSP
+          - 4430:4430 # ACME via HTTPS
+          - 4431:4431 # ACMEv2 via HTTPS
+          - 8055:8055 # dns-test-srv updates
+        depends_on:
+          - bmysql
+    bmysql:
+        image: mariadb:10.5
+        networks:
+          bluenet:
+            aliases:
+              - boulder-mysql
+        environment:
+            MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+        # Send slow queries to a table so we can check for them in the
+        # integration tests. For now we ignore queries not using indexes,
+        # because that seems to trigger based on the optimizer's choice to not
+        # use an index for certain queries, particularly when tables are still
+        # small.
+        command: mysqld --bind-address=0.0.0.0 --slow-query-log --log-output=TABLE --log-queries-not-using-indexes=ON
+        logging:
+            driver: none
+
+networks:
+  bluenet:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.77.77.0/24
