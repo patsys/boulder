@@ -33,9 +33,10 @@ RUN apk --no-cache add \
   monit
 
 COPY entrypoint.sh /opt/entrypoint
-COPY conf/monitrc /etc/monitrc
+COPY conf/monitrc /opt/boulder/template/monit/monitrc
 COPY script/monit-wrapper.sh /opt/monit/monit-wrapper
 COPY script/monit-kill.sh /opt/monit/monit-kill
+COPY script/monit-port-check.sh /opt/monit/monit-check-port
 
 COPY --from=0 /go/src/github.com/letsencrypt/boulder/bin/ /opt/boulder/bin
 COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/config /opt/boulder/config

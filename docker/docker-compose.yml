@@ -16,6 +16,7 @@ services:
             - RUN
             - INT_FILTER
             - RACE
+        command: sleep 10000
         networks:
           bluenet:
             ipv4_address: 10.77.77.77

@@ -1,7 +1,16 @@
+ set httpd unixsocket /var/run/monit.sock
+   allow admin:monit
+
+
 check process syslog
   with pidfile "/var/run/rsyslogd.pid"
   start program = "/usr/sbin/rsyslogd -f /etc/rsyslog.conf"
   stop program = "/bin/cat /var/run/rsyslogd.pid | /usr/bin/xargs /bin/kill" 
+
+check process port-check-sd-test-srv with pidfile /run/port-check-sd-test-srv.pid
+  start program = "/opt/monit/monit-check-port sd-test-srv 127.0.0.1 53 5"
+  stop program = "/opt/monit/monit-wrapper port-check-sd-test-srv stop"
+  DEPENDS on syslog, sd-test-srv
 
 check host sd-test-srv with address 127.0.0.1
   start program = "/opt/monit/monit-wrapper sd-test-srv start sd-test-srv --listen :53"
@@ -10,28 +19,41 @@ check host sd-test-srv with address 127.0.0.1
   DEPENDS on syslog
   if failed
     port 53
-    for 15 cycles
-  then EXEC "/opt/monit/monit-kill"
+    for 10 cycles
+  then restart 
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
+
+check process port-check-boulder-remoteva with pidfile /run/port-check-boulder-remoteva.pid
+  start program = "/opt/monit/monit-check-port boulder-remoteva 127.0.0.1 9097 5"
+  stop program = "/opt/monit/monit-wrapper port-check-boulder-remoteva stop"
+  DEPENDS on syslog, boulder-remoteva, port-check-sd-test-srv
 
 check host boulder-remoteva with address 127.0.0.1
   start program = "/opt/monit/monit-wrapper boulder-remoteva start boulder-remoteva --config /opt/boulder/config/va-remote-a.json"
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-remoteva stop"
-  DEPENDS on syslog, sd-test-srv
+  DEPENDS on syslog, port-check-sd-test-srv
   if failed
     port 9097
-    for 15 cycles
-  then EXEC "/opt/monit/monit-kill"
+    for 10 cycles
+  then restart 
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
+
+check process port-check-boulder-sa with pidfile /run/port-check-boulder-sa.pid
+  start program = "/opt/monit/monit-check-port boulder-sa 127.0.0.1 9095 5"
+  stop program = "/opt/monit/monit-wrapper port-check-boulder-sa stop"
+  DEPENDS on syslog, boulder-sa, port-check-sd-test-srv
 
 check host boulder-sa with address 127.0.0.1
   start program = "/opt/monit/monit-wrapper boulder-sa start boulder-sa --config /opt/boulder/config/sa.json --addr sa.$INTERNAL_DOMAIN:9095"
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-sa stop"
-  DEPENDS on syslog, sd-test-srv
+  DEPENDS on syslog, port-check-sd-test-srv
   if failed
     port 9095
-    for 15 cycles
-  then EXEC "/opt/monit/monit-kill"
+    for 10 cycles
+  then restart
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host ct-test-srv with address 127.0.0.1
   start program = "/opt/monit/monit-wrapper ct-test-srv start ct-test-srv --config /opt/boulder/config/ct-test-srv/ct-test-srv.json" 
@@ -40,18 +62,30 @@ check host ct-test-srv with address 127.0.0.1
   DEPENDS on syslog
   if failed
     port 4500
-    for 15 cycles
-  then EXEC "/opt/monit/monit-kill"
+    for 10 cycles
+  then restart
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
+
+check process port-check-boulder-publisher with pidfile /run/port-check-boulder-publisher.pid
+  start program = "/opt/monit/monit-check-port boulder-publisher 127.0.0.1 4500 5"
+  stop program = "/opt/monit/monit-wrapper port-check-boulder-publisher stop"
+  DEPENDS on syslog, boulder-publisher, port-check-sd-test-srv
 
 check host boulder-publisher with address 127.0.0.1
   start program = "/opt/monit/monit-wrapper boulder-publisher start boulder-publisher --config /opt/boulder/config/publisher.json --addr publisher.$INTERNAL_DOMAIN:9091 --debug-addr :8009" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-publisher stop"
-  DEPENDS on syslog, sd-test-srv
+  DEPENDS on syslog, port-check-sd-test-srv
   if failed
     port 4500
-    for 15 cycles
-  then EXEC "/opt/monit/monit-kill"
+    for 10 cycles
+  then restart
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
+
+check process port-check-mail-test-srv with pidfile /run/port-check-mail-test-srv.pid
+  start program = "/opt/monit/monit-check-port mail-test-srv 127.0.0.1 9380 5"
+  stop program = "/opt/monit/monit-wrapper port-check-mail-test-srv stop"
+  DEPENDS on syslog, mail-test-srv, port-check-sd-test-srv
 
 check host mail-test-srv with address 127.0.0.1
   start program = "/opt/monit/monit-wrapper mail-test-srv start mail-test-srv --closeFirst 5 --cert /opt/boulder/config/secrets/ca/mail-test-srv/cert.pem --key /opt/boulder/config/secrets/ca/mail-test-srv/key.pem" 
@@ -60,8 +94,9 @@ check host mail-test-srv with address 127.0.0.1
   DEPENDS on syslog
   if failed
     port 9380
-    for 15 cycles
-  then EXEC "/opt/monit/monit-kill"
+    for 10 cycles
+  then restart
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host ocsp-responder with address 127.0.0.1
   start program = "/opt/monit/monit-wrapper ocsp-responder start ocsp-responder --config /opt/boulder/config/ocsp-responder.json" 
@@ -70,104 +105,147 @@ check host ocsp-responder with address 127.0.0.1
   DEPENDS on syslog
   if failed
     port 8005
-    for 15 cycles
-  then EXEC "/opt/monit/monit-kill"
+    for 10 cycles
+  then restart
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
-#[program:boulder-va]
-#command=boulder-va --config /opt/boulder/config/va.json --addr va.$INTERNAL_DOMAIN:9092 --debug-addr ":8004"
-#stdout_logfile=/dev/stdout
-#stdout_logfile_maxbytes=0
-#stderr_logfile=/dev/stderr
-#stderr_logfile_maxbytes=0
-#dependent_startup=true
-#dependent_startup_wait_for=sd-test-srv:running boulder-remoteva:running  syslog:running
-#autostart=false
-#stopsignal=QUIT
-#
-#[program:boulder-ca]
-#command=boulder-ca  --config /opt/boulder/config/ca-a.json --ca-addr ca.$INTERNAL_DOMAIN:9093 --ocsp-addr ca.$INTERNAL_DOMAIN:9096 --debug-addr ":8001"
-#stdout_logfile=/dev/stdout
-#stdout_logfile_maxbytes=0
-#stderr_logfile=/dev/stderr
-#stderr_logfile_maxbytes=0
-#dependent_startup=true
-#dependent_startup_wait_for=sd-test-srv:running boulder-sa:running syslog:running
-#autostart=false
-#stopsignal=QUIT
-#
-#[program:akamai-test-srv]
-#command=akamai-test-srv --listen localhost:6789 --secret "$AKAMAI_SECRET" 
-#stdout_logfile=/dev/stdout
-#stdout_logfile_maxbytes=0
-#stderr_logfile=/dev/stderr
-#stderr_logfile_maxbytes=0
-#dependent_startup=true
-#dependent_startup_wait_for=syslog:running
-#autostart=false
-#stopsignal=QUIT
-#
-#[program:akamai-purger]
-#command=akamai-purger --config /opt/boulder/config/akamai-purger.json
-#stdout_logfile=/dev/stdout
-#stdout_logfile_maxbytes=0
-#stderr_logfile=/dev/stderr
-#stderr_logfile_maxbytes=0
-#dependent_startup=true
-#dependent_startup_wait_for=sd-test-srv:running akamai-test-srv:running syslog:running
-#autostart=false
-#stopsignal=QUIT
-#
-#[program:ocsp-updater]
-#command=ocsp-updater --config /opt/boulder/config/ocsp-updater.json
-#stdout_logfile=/dev/stdout
-#stdout_logfile_maxbytes=0
-#stderr_logfile=/dev/stderr
-#stderr_logfile_maxbytes=0
-#dependent_startup=true
-#dependent_startup_wait_for=sd-test-srv:running boulder-ca:running syslog:running
-#autostart=false
-#stopsignal=QUIT
-#
-#[program:boulder-ra]
-#command=boulder-ra --config /opt/boulder/config/ra.json --addr ra.$NTERNAL_DOMAIN:9094 --debug-addr ":8002"
-#stdout_logfile=/dev/stdout
-#stdout_logfile_maxbytes=0
-#stderr_logfile=/dev/stderr
-#stderr_logfile_maxbytes=0
-#dependent_startup=true
-#dependent_startup_wait_for=sd-test-srv:running boulder-sa:running boulder-ca-a:running boulder-va:running akamai-purger:running boulder-publisher:running syslog:running
-#autostart=false
-#stopsignal=QUIT
-#
-#[program:bad-key-revoker]
-#command=bad-key-revoker --config /opt/boulder/config/bad-key-revoker.json
-#stdout_logfile=/dev/stdout
-#stdout_logfile_maxbytes=0
-#stderr_logfile=/dev/stderr
-#stderr_logfile_maxbytes=0
-#dependent_startup=true
-#dependent_startup_wait_for=sd-test-srv:running boulder-ra:running mail-test-srv:running syslog:running
-#autostart=false
-#stopsignal=QUIT
-#
-#[program:nonce-service]
-#command=nonce-service --config /opt/boulder/config/nonce.json --addr nonce.$INTERNAL_DOMAIN:9101 --debug-addr :8111 --prefix taro
-#stdout_logfile=/dev/stdout
-#stdout_logfile_maxbytes=0
-#stderr_logfile=/dev/stderr
-#stderr_logfile_maxbytes=0
-#dependent_startup=true
-#dependent_startup_wait_for=sd-test-srv:running syslog:running
-#autostart=false
-#stopsignal=QUIT
-#
-#[program:boulder-wfe]
-#command=boulder-wfe --config /opt/boulder/config/wfe.json
-#stdout_logfile=/dev/stdout
-#stdout_logfile_maxbytes=0
-#stderr_logfile=/dev/stderr
-#stderr_logfile_maxbytes=0
-#dependent_startup=true
-#dependent_startup_wait_for=sd-test-srv:running boulder-ra:running boulder-sa:running nonce-service:running syslog:running
-#autostart=false
-#stopsignal=QUIT
+check process port-check-boulder-va with pidfile /run/port-check-boulder-va.pid
+  start program = "/opt/monit/monit-check-port boulder-va 127.0.0.1 8004 5"
+  stop program = "/opt/monit/monit-wrapper port-check-boulder-va stop"
+  DEPENDS on syslog, boulder-va, port-check-sd-test-srv,  port-check-boulder-remoteva
+
+check host boulder-va with address 127.0.0.1
+  start program = "/opt/monit/monit-wrapper boulder-va start boulder-va --config /opt/boulder/config/va.json --addr va.$INTERNAL_DOMAIN:9092 --debug-addr :8004" 
+  with timeout 90 seconds
+  stop program = "/opt/monit/monit-wrapper boulder-va stop"
+  DEPENDS on syslog, port-check-sd-test-srv, port-check-boulder-remoteva
+  if failed
+    port 8004
+    for 10 cycles
+  then restart 
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
+
+
+check process port-check-boulder-ca with pidfile /run/port-check-boulder-ca.pid
+  start program = "/opt/monit/monit-check-port boulder-ca 127.0.0.1 8005 5"
+  stop program = "/opt/monit/monit-wrapper port-check-boulder-ca stop"
+  DEPENDS on syslog, boulder-ca, port-check-sd-test-srv, port-check-boulder-sa
+
+check host boulder-ca with address 127.0.0.1
+  start program = "/opt/monit/monit-wrapper port-check-boulder-ca start boulder-ca  --config /opt/boulder/config/ca-a.json --ca-addr ca.$INTERNAL_DOMAIN:9093 --ocsp-addr ca.$INTERNAL_DOMAIN:9096 --debug-addr :8001" 
+  with timeout 90 seconds
+  stop program = "/opt/monit/monit-wrapper port-check-boulder-ca stop"
+  DEPENDS on syslog, port-check-sd-test-srv, port-check-boulder-sa
+  if failed
+    port 8005
+    for 10 cycles
+  then restart
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
+
+check process port-check-akamai-test-srv with pidfile /run/port-check-akamai-test-srv.pid
+  start program = "/opt/monit/monit-check-port akamai-test-srv 127.0.0.1 6789 5"
+  stop program = "/opt/monit/monit-wrapper port-check-boulder-ca stop"
+  DEPENDS on syslog, akamai-test-srv, port-check-sd-test-srv, port-check-boulder-sa
+
+check host akamai-test-srv with address 127.0.0.1
+  start program = "/opt/monit/monit-wrapper akamai-test-srv start akamai-test-srv --listen localhost:6789 --secret '$AKAMAI_SECRET'"
+  with timeout 90 seconds
+  stop program = "/opt/monit/monit-wrapper akamai-test-srv stop"
+  DEPENDS on syslog
+  if failed
+    port 6789
+    for 10 cycles
+  then restart
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
+
+check process port-check-akamai-purger with pidfile /run/port-check-akamai-test-srv.pid
+  start program = "/opt/monit/monit-check-port akamai-purger 127.0.0.1 9666 5"
+  stop program = "/opt/monit/monit-wrapper port-check-akamai-purger stop"
+  DEPENDS on syslog, akamai-purger, port-check-sd-test-srv, port-check-akamai-test-srv
+
+check host akamai-purger with address 127.0.0.1
+  start program = "/opt/monit/monit-wrapper akamai-purger start akamai-purger --config /opt/boulder/config/akamai-purger.json" 
+  with timeout 90 seconds
+  stop program = "/opt/monit/monit-wrapper akamai-purger stop"
+  DEPENDS on syslog, port-check-sd-test-srv, port-check-akamai-test-srv
+  if failed
+    port 9666
+    for 10 cycles
+  then restart
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
+
+check host ocsp-updater with address 127.0.0.1
+  start program = "/opt/monit/monit-wrapper ocsp-updater start ocsp-updater --config /opt/boulder/config/ocsp-updater.json" 
+  with timeout 90 seconds
+  stop program = "/opt/monit/monit-wrapper ocsp-updater stop"
+  DEPENDS on syslog, port-check-sd-test-srv, port-check-boulder-ca
+  if failed
+    port 8005
+    for 10 cycles
+  then restart
+
+check process port-check-boulder-ra with pidfile /run/port-check-boulder-ra.pid
+  start program = "/opt/monit/monit-check-port boulder-ra 127.0.0.1 9094 5"
+  stop program = "/opt/monit/monit-wrapper port-check-boulder-ra stop"
+  DEPENDS on syslog, boulder-ra, port-check-sd-test-srv, port-check-boulder-sa, port-check-boulder-ca, port-check-boulder-va, port-check-akamai-purger, port-check-boulder-publisher
+ if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
+
+check host boulder-ra with address 127.0.0.1
+  start program = "/opt/monit/monit-wrapper boulder-ra start boulder-ra --config /opt/boulder/config/ra.json --addr ra.$NTERNAL_DOMAIN:9094 --debug-addr :8002" 
+  with timeout 90 seconds
+  stop program = "/opt/monit/monit-wrapper boulder-ra stop"
+  DEPENDS on syslog, port-check-sd-test-srv, port-check-boulder-sa, port-check-boulder-ca, port-check-boulder-va, port-check-akamai-purger, port-check-boulder-publisher
+  if failed
+    port 9094
+    for 10 cycles
+  then restart
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
+
+check host bad-key-revoker with address 127.0.0.1
+  start program = "/opt/monit/monit-wrapper bad-key-revoker start bad-key-revoker --config /opt/boulder/config/bad-key-revoker.json" 
+  with timeout 90 seconds
+  stop program = "/opt/monit/monit-wrapper bad-key-revoker stop"
+  DEPENDS on syslog, port-check-sd-test-srv, port-check-boulder-ra, port-check-mail-test-srv
+  if failed
+    port 8020
+    for 10 cycles
+  then restart
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
+
+check process port-check-nonce-service with pidfile /run/port-check-nonce-service.pid
+  start program = "/opt/monit/monit-check-port nonce-service nonce.$INTERNAL_DOMAIN 9101 5"
+  stop program = "/opt/monit/monit-wrapper port-check-nonce-service stop"
+  DEPENDS on syslog, nonce-service, port-check-sd-test-srv
+
+check host nonce-service with address 127.0.0.1
+  start program = "/opt/monit/monit-wrapper nonce-service start nonce-service --config /opt/boulder/config/nonce.json --addr nonce.$INTERNAL_DOMAIN:9101 --debug-addr :8111 --prefix taro" 
+  with timeout 90 seconds
+  stop program = "/opt/monit/monit-wrapper nonce-service stop"
+  DEPENDS on syslog, port-check-sd-test-srv
+  if failed
+    port 9101
+    for 10 cycles
+  then restart
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
+
+check host boulder-wfe with address 127.0.0.1
+  start program = "/opt/monit/monit-wrapper boulder-wfe start boulder-wfe --config /opt/boulder/config/wfe.json" 
+  with timeout 90 seconds
+  stop program = "/opt/monit/monit-wrapper boulder-wfe stop"
+  DEPENDS on syslog, port-check-sd-test-srv, boulder-ra, port-check-boulder-sa, port-check-nonce-service
+  if failed
+    port 4000
+    for 10 cycles
+  then restart
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
+
+check host log-validator with address 127.0.0.1
+  start program = "/opt/monit/monit-wrapper log-validator start log-validator --config /opt/boulder/log-validator.json" 
+  with timeout 90 seconds
+  stop program = "/opt/monit/monit-wrapper log-validator stop"
+  DEPENDS on syslog, port-check-sd-test-srv, boulder-ra, port-check-boulder-sa, port-check-nonce-service
+  if failed
+    port 8016
+    for 10 cycles
+  then restart
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"

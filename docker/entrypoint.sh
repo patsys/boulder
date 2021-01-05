@@ -4,6 +4,9 @@ find /opt/boulder/config  -name "**.json"  -type f -exec sh -c '
   sed -i "s|http://example.com|.$EXTERNAL_DOMAIN|g" "$0"
   sed -i "s|\.boulder|.$INTERNAL_DOMAIN|g" "$0"
   sed -i "s|boulder:|$INTERNAL_DOMAIN:|g" "$0"' {} \; 
+
+envsubst </opt/boulder/template/monit/monitrc >/etc/monitrc
+
 rm -f /var/run/rsyslogd.pid
 service rsyslog start
 
