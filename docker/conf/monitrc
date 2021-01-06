@@ -110,7 +110,7 @@ check host ocsp-responder with address 127.0.0.1
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check process port-check-boulder-va with pidfile /run/port-check-boulder-va.pid
-  start program = "/opt/monit/monit-check-port boulder-va 127.0.0.1 8004 5"
+  start program = "/opt/monit/monit-check-port boulder-va 127.0.0.1 9092 5"
   stop program = "/opt/monit/monit-wrapper port-check-boulder-va stop"
   DEPENDS on syslog, boulder-va, port-check-sd-test-srv,  port-check-boulder-remoteva
 
@@ -120,7 +120,7 @@ check host boulder-va with address 127.0.0.1
   stop program = "/opt/monit/monit-wrapper boulder-va stop"
   DEPENDS on syslog, port-check-sd-test-srv, port-check-boulder-remoteva
   if failed
-    port 8004
+    port 9092
     for 10 cycles
   then restart 
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"

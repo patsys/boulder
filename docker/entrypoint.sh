@@ -1,14 +1,11 @@
 #!/bin/sh
-
+set -e -o pipefail
 find /opt/boulder/config  -name "**.json"  -type f -exec sh -c '
   sed -i "s|http://example.com|.$EXTERNAL_DOMAIN|g" "$0"
   sed -i "s|\.boulder|.$INTERNAL_DOMAIN|g" "$0"
   sed -i "s|boulder:|$INTERNAL_DOMAIN:|g" "$0"' {} \; 
 
 envsubst </opt/boulder/template/monit/monitrc >/etc/monitrc
-
-rm -f /var/run/rsyslogd.pid
-service rsyslog start
 
 wait_tcp_port() {
     local host="$1" port="$2"
@@ -30,10 +27,24 @@ wait_tcp_port() {
     exec 6>&-
     echo "Connected to $host:$port"
 }
+wait_pki() {
+  local max_tries="90"
+  for n in `seq 1 $max_tries` ; do
+    if [ $(ls /pki | wc -w ) -ge 8 ]; then
+      break
+    else
+      echo "$(date) - /pki files not exist"
+      sleep 2
+    fi
+    if [ "$n" -eq "$max_tries" ]; then
+      echo "unable to find pki"
+      exit 2
+    fi
+  done
+}
 # make sure we can reach the mysqldb
-wait_tcp_port boulder-mysql 3306
+wait_tcp_port $DB_HOST $DB_PORT
 
-# create the database
-#MYSQL_CONTAINER=1 $DIR/create_db.sh
+wait_pki
 
 $@
