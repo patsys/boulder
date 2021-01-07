@@ -1,31 +1,11 @@
 version: '3'
 services:
-  init-boulder:
-    image: patsys/init-boulder 
-    command: sleep 1000
-    depends_on:
-    - bmysql
-    networks:
-      bluenet: {}
-    volumes:
-    - pki:/pki
-    # To minimize fetching this should be the same version used below
   boulder:
     image: patsys/boulder 
     environment:
+    - DB_CLEAN_INIT="true"
     - FAKE_DNS=10.77.77.77
-    - BOULDER_CONFIG_DIR=test/config
-    - GOFLAGS=-mod=vendor
-    # This is required so Python doesn't throw an error when printing
-    # non-ASCII to stdout.
-    - PYTHONIOENCODING=utf-8
-    # These are variables you can set to affect what tests get run or
-    # how they are run. Including them here with no value means they are
-    # passed through from the environment.
-    - RUN
-    - INT_FILTER
-    - RACE
-    command: sleep 10000
+    - ENVIRONMENT=testing
     networks:
       bluenet:
         ipv4_address: 10.77.77.77
@@ -38,6 +18,20 @@ services:
         - ocsp-updater.boulder
         - admin-revoker.boulder
         - nonce.boulder
+        - sa1.boulder
+        - ca1.boulder
+        - ra1.boulder
+        - va1.boulder
+        - publisher1.boulder
+      rednet:
+        ipv4_address: 10.88.88.88
+        aliases:
+        - sa2.boulder
+        - ca2.boulder
+        - ra2.boulder
+        - va2.boulder
+        - publisher2.boulder
+        - nonce2.boulder
     # Use sd-test-srv as a backup to Docker's embedded DNS server
     # (https://docs.docker.com/config/containers/container-networking/#dns-services).
     # If there's a name Docker's DNS server doesn't know about, it will
@@ -55,9 +49,6 @@ services:
     - 8055:8055 # dns-test-srv updates
     depends_on:
     - bmysql
-    - init-boulder
-    volumes:
-    - pki:/pki
   bmysql:
     image: mariadb:10.5
     networks:
@@ -86,9 +77,6 @@ services:
 #    - bmysql
 #    networks:
 #      bluenet: {}
-
-volumes:
-  pki: {}
 networks:
   bluenet:
     driver: bridge
@@ -96,3 +84,9 @@ networks:
       driver: default
       config:
         - subnet: 10.77.77.0/24
+  rednet:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.88.88.0/24

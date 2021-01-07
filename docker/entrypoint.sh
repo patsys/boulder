@@ -5,7 +5,10 @@ find /opt/boulder/config  -name "**.json"  -type f -exec sh -c '
   sed -i "s|\.boulder|.$INTERNAL_DOMAIN|g" "$0"
   sed -i "s|boulder:|$INTERNAL_DOMAIN:|g" "$0"' {} \; 
 
-envsubst </opt/boulder/template/monit/monitrc >/etc/monitrc
+for monit in /opt/boulder/template/monit/*; do
+  envsubst <$monit >/etc/$(basename $monit)
+  chmod 700 /etc/$(basename $monit)
+done
 
 wait_tcp_port() {
     local host="$1" port="$2"
@@ -27,6 +30,7 @@ wait_tcp_port() {
     exec 6>&-
     echo "Connected to $host:$port"
 }
+
 wait_pki() {
   local max_tries="90"
   for n in `seq 1 $max_tries` ; do
@@ -45,6 +49,16 @@ wait_pki() {
 # make sure we can reach the mysqldb
 wait_tcp_port $DB_HOST $DB_PORT
 
+if echo "$ENVIRONMENT" | grep -q "testing"; then
+/opt/boulder/create_pki
+fi
+
+
 wait_pki
 
-$@
+/opt/boulder/migrate
+
+if [ "$ENVIRONMENT" ]; then
+  ENVIRONMENT="-$ENVIRONMENT"
+fi
+eval "$@" | while IFS= read -r line; do echo $(date +'[%Y-%m-%d %H:%M:%S]') $line; done

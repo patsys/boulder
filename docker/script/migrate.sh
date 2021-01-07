@@ -25,28 +25,30 @@ mysql $dbconn -e "SET GLOBAL max_connections = 500;"
 for dbenv in $DB_ENVS; do
   db="boulder_sa_${dbenv}"
 
-  if mysql $dbconn -e 'show databases;' | grep $db > /dev/null; then
-    echo "Database $db already exists - skipping create"
-  else
-    create_script="drop database if exists \`${db}\`; create database if not exists \`${db}\`;"
-
-    mysql $dbconn -e "$create_script" || die "unable to create ${db}"
-
-    echo "created empty ${db} database"
+  if [ "$DB_CLEAN_INIT" == "true" ];then
+    if mysql $dbconn -e 'show databases;' | grep $db > /dev/null; then
+      echo "Database $db already exists - skipping create"
+    else
+      create_script="drop database if exists \`${db}\`; create database if not exists \`${db}\`;"
+  
+      mysql $dbconn -e "$create_script" || die "unable to create ${db}"
+  
+      echo "created empty ${db} database"
+    fi
   fi
 
   goose -path=./_db/ -env=$dbenv up || die "unable to migrate ${db} with ./_db/"
   echo "migrated ${db} database with ./_db/"
 
   if [[ "$BOULDER_CONFIG_DIR" = "test/config-next" ]]; then
-    nextDir="./_db-next/"
+    nextDir="./_db-next"
 
     # Goose exits non-zero if there are no migrations to apply with the error
     # message:
     #   "2016/09/26 15:43:38 no valid version found"
     # so we only want to run goose with the nextDir if there is a migrations
     # directory present with at least one migration
-    if [ $(find "_db-next/migrations" -maxdepth 0 -type d -not -empty 2>/dev/null) ]; then
+    if [ $(find "${nextDir}/migrations" -maxdepth 0 -type d -not -empty 2>/dev/null) ]; then
       goose -path=${nextDir} -env=$dbenv up || die "unable to migrate ${db} with ${nextDir}"
       echo "migrated ${db} database with ${nextDir}"
     else
@@ -60,10 +62,12 @@ for dbenv in $DB_ENVS; do
   # socket connections. Use '-f' to ignore errors while
   # we have migrations that haven't been applied but
   # add new tables (TODO(#2931): remove -f).
-  USERS_SQL=./sa_db_users.sql
-  sed -e "s/'localhost'/'%'/g" < ${USERS_SQL} | \
-    mysql $dbconn -D $db -f || die "unable to add users to ${db}"
-  echo "added users to ${db}"
+  if echo $ENVIRONMENT | grep -q "testing";then
+    USERS_SQL=./sa_db_users.sql
+    sed -e "s/'localhost'/'%'/g" < ${USERS_SQL} | \
+      mysql $dbconn -D $db -f || die "unable to add users to ${db}"
+    echo "added users to ${db}"
+  fi
 done
 
 echo "created all databases"
