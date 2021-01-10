@@ -58,10 +58,9 @@ wait_tcp_port $DB_HOST $DB_PORT
 
 if echo "$ENVIRONMENT" | grep -q "testing"; then
 /opt/boulder/create_pki
+wait_pki
 fi
 
-
-wait_pki
 
 /opt/boulder/migrate
 
