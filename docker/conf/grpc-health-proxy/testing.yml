@@ -1,0 +1,146 @@
+---
+server:
+  cli: false
+  service: 
+  address: 127.0.0.1:5050
+  path: /health
+  certPath:
+  keyPath:
+  mlsCA:
+  mtlsEnabled: false
+  timeout: 1200ms
+probe:
+  userAgent: testRpc
+  timeout: 800ms
+hosts:
+  # dummy cli need by grpc-health-proxy
+  cli:
+    address: dummy:1
+  remoteva-a:
+    address: 127.0.0.1:9097
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: va1.$INTERNAL_DOMAIN
+  remoteva-b:
+    address: 127.0.0.1:9098
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: va2.$INTERNAL_DOMAIN
+  sa-1:
+    address: sa1.$INTERNAL_DOMAIN:9095
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: sa1.$INTERNAL_DOMAIN
+  sa-2:
+    address: sa2.$INTERNAL_DOMAIN:9095
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: sa2.$INTERNAL_DOMAIN
+  publisher-1:
+    address: publisher1.$INTERNAL_DOMAIN:9091
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: publisher1.$INTERNAL_DOMAIN
+  publisher-2:
+    address: publisher2.$INTERNAL_DOMAIN:9091
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: publisher2.$INTERNAL_DOMAIN
+  mail-test-srv:
+    address: 127.0.0.1:9380
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/mail-test-srv/minica.pem
+#    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+#    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: localhost
+  va-1:
+    address: va1.$INTERNAL_DOMAIN:9092
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: va1.$INTERNAL_DOMAIN
+  va-2:
+    address: va2.$INTERNAL_DOMAIN:9092
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: va2.$INTERNAL_DOMAIN
+  ca-a:
+    address: ca1.$INTERNAL_DOMAIN:9093
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: ca1.$INTERNAL_DOMAIN
+  ca-b:
+    address: ca2.$INTERNAL_DOMAIN:9093
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: ca2.$INTERNAL_DOMAIN
+  akamai-purger:
+    address: akamai-purger.$INTERNAL_DOMAIN:9099
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: akamai-purger.$INTERNAL_DOMAIN
+  ra-1:
+    address: ra1.$INTERNAL_DOMAIN:9094
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: ra1.$INTERNAL_DOMAIN
+  ra-2:
+    address: ra2.$INTERNAL_DOMAIN:9094
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: ra2.$INTERNAL_DOMAIN
+  nonce-taro:
+    address: nonce1.$INTERNAL_DOMAIN:9101
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: nonce1.$INTERNAL_DOMAIN
+  nonce-zinc:
+    address: nonc2.$INTERNAL_DOMAIN:9101
+    tlsEnabled: true
+    tlsNoVerfiy: false
+    tlsCaPath: /opt/boulder/config/test/secrets/ca/minica.pem
+    mtlsCertPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem
+    mtlsKeyPath: /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem
+    sniServerName: nonce2.$INTERNAL_DOMAIN

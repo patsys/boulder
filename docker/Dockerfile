@@ -1,22 +1,28 @@
 FROM alpine:latest
 
-RUN apk add --no-cache \
+RUN echo "@testing http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
+  && apk add --no-cache \
   git \
   make \
   musl-dev \
   go
+#   paxmark bison flex texinfo gawk zip gmp-dev mpfr-dev mpc1-dev zlib-dev libucontext-dev linux-headers isl-dev gcc-gnat-bootstrap
 
 # Configure Go
-ENV GOROOT /usr/lib/go
-ENV GOPATH /go
-ENV PATH /go/bin:$PATH
+ENV GOROOT=/usr/lib/go \
+    GOPATH=/go \
+    PATH=/go/bin:$PATH \
+    BOULDER_GO_BUILDFLAGS="" \
+    BOULDER_GO_LDFLAGS=" -s -w "
 
-RUN mkdir -p ${GOPATH}/src ${GOPATH}/bin \
+RUN  mkdir -p ${GOPATH}/src ${GOPATH}/bin \
   && git clone https://github.com/letsencrypt/boulder/ $GOPATH/src/github.com/letsencrypt/boulder \
   && cd $GOPATH/src/github.com/letsencrypt/boulder \
+  && sed -i 's/GO_BUILD_FLAGS = -ldflags "\(.*\)/GO_BUILD_FLAGS = ${BOULDER_GO_BUILDFLAGS}  -ldflags "${BOULDER_GO_LDFLAGS} \1/g' Makefile \
   && make \
   && go get bitbucket.org/liamstask/goose/cmd/goose \
-  && go get github.com/jsha/minica
+  && go get github.com/jsha/minica \
+  && go get github.com/patsys/grpc_health_proxy@v1.1.0
 
 
 FROM alpine:3  
@@ -43,41 +49,41 @@ RUN apk --no-cache add \
   rsyslog \
   monit \
   softhsm \
+  curl \
   mysql-client
 
 COPY entrypoint.sh /opt/entrypoint
 COPY conf/monit/* /opt/boulder/template/monit/
-COPY script/monit-wrapper.sh /opt/monit/monit-wrapper
-COPY script/monit-kill.sh /opt/monit/monit-kill
-COPY script/monit-port-check.sh /opt/monit/monit-check-port
+COPY script/monit/* /opt/monit/
+COPY conf/grpc-health-proxy/* /opt/boulder/template/grpc-health-proxy/
 COPY script/migrate.sh /opt/boulder/migrate
 COPY script/create_pki.sh /opt/boulder/create_pki
 
 COPY --from=0 /go/bin/ /opt/boulder/bin
 COPY --from=0 /go/src/github.com/letsencrypt/boulder/bin/ /opt/boulder/bin
-COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/config /opt/boulder/config
-COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/secrets /opt/boulder/config/secrets
-COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/grpc-creds /opt/boulder/config/secrets/ca
-COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/*.json /opt/boulder/config/
-COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/*.yml /opt/boulder/config/
-COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/*.yaml /opt/boulder/config/
-COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/*.pem /opt/boulder/config/
-COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/*.key /opt/boulder/config/
-COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/*.der /opt/boulder/config/
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/config /opt/boulder/config/test
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/secrets /opt/boulder/config/test/secrets
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/grpc-creds /opt/boulder/config/test/secrets/ca
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/*.json /opt/boulder/config/test/
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/*.yml /opt/boulder/config/test/
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/*.yaml /opt/boulder/config/test/
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/*.pem /opt/boulder/config/test/
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/*.key /opt/boulder/config/test/
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/*.der /opt/boulder/config/test/
 COPY --from=0 /go/src/github.com/letsencrypt/boulder/sa/_db /opt/boulder/sql/_db
 COPY --from=0 /go/src/github.com/letsencrypt/boulder/sa/_db-next /opt/boulder/sql/_db-next
 COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/sa_db_users.sql /opt/boulder/sql/
 COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/cert-ceremonies /opt/boulder/cert-ceremonies
-COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/wfe-tls /opt/boulder/config/wfe-tls
-COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/mail-test-srv/localhost/*.pem /opt/boulder/config/secrets/ca/mail-test-srv/
-COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/*-template /opt/boulder/config/
-COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/mail-test-srv/*.pem /opt/boulder/config/mail-test-srv/
-COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/ct-test-srv/*.json /opt/boulder/config/ct-test-srv/
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/wfe-tls /opt/boulder/config/test/wfe-tls
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/mail-test-srv/localhost/*.pem /opt/boulder/config/test/secrets/ca/mail-test-srv/
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/mail-test-srv/*.pem /opt/boulder/config/test/secrets/ca/mail-test-srv/
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/*-template /opt/boulder/config/test/
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/mail-test-srv/*.pem /opt/boulder/config/test/mail-test-srv/
+COPY --from=0 /go/src/github.com/letsencrypt/boulder/test/ct-test-srv/*.json /opt/boulder/config/test/ct-test-srv/
 
 RUN find /opt/boulder/config  -name "**.json"  -type f -exec sh -c ' \
-       sed -i "s|test/secrets/|/opt/boulder/config/secrets/|g" "$0"; \
-       sed -i "s|test/grpc-creds/|/opt/boulder/config/secrets/ca/|g" "$0"; \ 
-       sed -i "s|test/|/opt/boulder/config/|g" "$0"; \
+       sed -i "s|\"test/grpc-creds/|\"/opt/boulder/config/test/secrets/ca/|g" "$0"; \ 
+       sed -i "s|\"test/|\"/opt/boulder/config/test/|g" "$0"; \
        sed -i "s|/usr/local/lib/|/usr/lib/|g" "$0"; \
        sed -i "s|/tmp/|/pki/|g" "$0"' {} \; \ 
     && find /opt/boulder/cert-ceremonies/ -name "*.yaml" -type f -exec sh -c ' \

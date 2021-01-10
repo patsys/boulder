@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e -o pipefail
-find /opt/boulder/config  -name "**.json"  -type f -exec sh -c '
+find /opt/boulder/config/test  -name "**.json"  -type f -exec sh -c '
   sed -i "s|http://example.com|.$EXTERNAL_DOMAIN|g" "$0"
   sed -i "s|\.boulder|.$INTERNAL_DOMAIN|g" "$0"
   sed -i "s|boulder:|$INTERNAL_DOMAIN:|g" "$0"' {} \; 
@@ -9,6 +9,13 @@ for monit in /opt/boulder/template/monit/*; do
   envsubst <$monit >/etc/$(basename $monit)
   chmod 700 /etc/$(basename $monit)
 done
+mkdir -p /opt/grpc-health-proxy/config/boulder
+for proxy in /opt/boulder/template/grpc-health-proxy/*; do
+  envsubst <$proxy >/opt/grpc-health-proxy/config/boulder/$(basename $proxy)
+  chmod 700 /etc/$(basename $monit)
+done
+
+cat /opt/boulder/config/test/secrets/ca/health-checker.boulder/cert.pem /opt/boulder/config/test/secrets/ca/health-checker.boulder/key.pem > /opt/boulder/config/test/secrets/ca/health-checker.boulder/monit.pem
 
 wait_tcp_port() {
     local host="$1" port="$2"
@@ -61,4 +68,5 @@ wait_pki
 if [ "$ENVIRONMENT" ]; then
   ENVIRONMENT="-$ENVIRONMENT"
 fi
+echo $@
 eval "$@" | while IFS= read -r line; do echo $(date +'[%Y-%m-%d %H:%M:%S]') $line; done

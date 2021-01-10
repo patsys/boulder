@@ -1,0 +1,2 @@
+#!/bin/sh
+[ $(monit summary -B |  tail -n+3 | awk '$2!~/OK/{print $1}' | wc -l) -eq 0 ]

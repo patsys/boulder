@@ -1,4 +1,5 @@
  set httpd unixsocket /var/run/monit.sock
+     port 2821
    allow admin:monit
 
 
@@ -6,6 +7,17 @@ check process syslog
   with pidfile "/var/run/rsyslogd.pid"
   start program = "/usr/sbin/rsyslogd -f /etc/rsyslog.conf"
   stop program = "/bin/cat /var/run/rsyslogd.pid | /usr/bin/xargs /bin/kill" 
+
+check host grpc-health-proxy address 127.0.0.1
+  start program = "/opt/monit/monit-wrapper grpc-health-proxy start grpc_health_proxy -config /opt/grpc-health-proxy/config/boulder/testing.yml"
+  stop program = "/opt/monit/monit-wrapper grpc-health-proxy stop" 
+  if failed
+    port 5050
+    protocol http
+    request /health/
+    for 10 cycles
+  then restart 
+  if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host sd-test-srv with address 127.0.0.1
   start program = "/opt/monit/monit-wrapper sd-test-srv start sd-test-srv --listen :53"
@@ -19,144 +31,175 @@ check host sd-test-srv with address 127.0.0.1
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host boulder-remoteva-a with address 127.0.0.1
-  start program = "/opt/monit/monit-wrapper boulder-remoteva-a start boulder-remoteva --config /opt/boulder/config/va-remote-a.json"
+  start program = "/opt/monit/monit-wrapper boulder-remoteva-a start boulder-remoteva --config /opt/boulder/config/test/va-remote-a.json"
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-remoteva-a stop"
-  DEPENDS on syslog, sd-test-srv
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv
   if failed
-    port 9097
+    port 5050
+    protocol http
+    request /health/remoteva-a
     for 10 cycles
   then restart 
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host boulder-remoteva-b with address 127.0.0.1
-  start program = "/opt/monit/monit-wrapper boulder-remoteva-b start boulder-remoteva --config /opt/boulder/config/va-remote-b.json"
+  start program = "/opt/monit/monit-wrapper boulder-remoteva-b start boulder-remoteva --config /opt/boulder/config/test/va-remote-b.json"
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-remoteva-b stop"
-  DEPENDS on syslog, sd-test-srv
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv
   if failed
-    port 9098
+    port 5050
+    protocol http
+    request /health/remoteva-b
     for 10 cycles
   then restart 
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host boulder-sa-1 with address sa1.$INTERNAL_DOMAIN
-  start program = "/opt/monit/monit-wrapper boulder-sa-1 start boulder-sa --config /opt/boulder/config/sa.json --addr sa1.$INTERNAL_DOMAIN:9095 --debug-addr :8003"
+  start program = "/opt/monit/monit-wrapper boulder-sa-1 start boulder-sa --config /opt/boulder/config/test/sa.json --addr sa1.$INTERNAL_DOMAIN:9095 --debug-addr :8003"
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-sa-1 stop"
-  DEPENDS on syslog, sd-test-srv
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv
   if failed
-    port 9095
+    host 127.0.0.1
+    port 5050
+    protocol http
+    request /health/sa-1
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host boulder-sa-2 with address sa1.$INTERNAL_DOMAIN
-  start program = "/opt/monit/monit-wrapper boulder-sa-2 start boulder-sa --config /opt/boulder/config/sa.json --addr sa2.$INTERNAL_DOMAIN:9095 --debug-addr :8103"
+  start program = "/opt/monit/monit-wrapper boulder-sa-2 start boulder-sa --config /opt/boulder/config/test/sa.json --addr sa2.$INTERNAL_DOMAIN:9095 --debug-addr :8103"
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-sa-2 stop"
-  DEPENDS on syslog, sd-test-srv
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv
   if failed
-    port 9095
+    host 127.0.0.1
+    port 5050
+    protocol http
+    request /health/sa-2
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host ct-test-srv with address 127.0.0.1
-  start program = "/opt/monit/monit-wrapper ct-test-srv start ct-test-srv --config /opt/boulder/config/ct-test-srv/ct-test-srv.json" 
+  start program = "/opt/monit/monit-wrapper ct-test-srv start ct-test-srv --config /opt/boulder/config/test/ct-test-srv/ct-test-srv.json" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper ct-test-srv stop"
   DEPENDS on syslog
   if failed
     port 4500
+    type tcp
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host boulder-publisher-1 with address publisher1.$INTERNAL_DOMAIN
-  start program = "/opt/monit/monit-wrapper boulder-publisher-1 start boulder-publisher --config /opt/boulder/config/publisher.json --addr publisher1.$INTERNAL_DOMAIN:9091 --debug-addr :8009" 
+  start program = "/opt/monit/monit-wrapper boulder-publisher-1 start boulder-publisher --config /opt/boulder/config/test/publisher.json --addr publisher1.$INTERNAL_DOMAIN:9091 --debug-addr :8009" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-publisher-1 stop"
-  DEPENDS on syslog, sd-test-srv
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv
   if failed
-    port 9091
+    host 127.0.0.1
+    port 5050
+    protocol http
+    request /health/publisher-1
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host boulder-publisher-2 with address publisher2.$INTERNAL_DOMAIN
-  start program = "/opt/monit/monit-wrapper boulder-publisher-2 start boulder-publisher --config /opt/boulder/config/publisher.json --addr publisher2.$INTERNAL_DOMAIN:9091 --debug-addr :8109" 
+  start program = "/opt/monit/monit-wrapper boulder-publisher-2 start boulder-publisher --config /opt/boulder/config/test/publisher.json --addr publisher2.$INTERNAL_DOMAIN:9091 --debug-addr :8109" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-publisher-2 stop"
-  DEPENDS on syslog, sd-test-srv
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv
   if failed
-    port 9091
+    host 127.0.0.1
+    port 5050
+    protocol http
+    request /health/publisher-2
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host mail-test-srv with address 127.0.0.1
-  start program = "/opt/monit/monit-wrapper mail-test-srv start mail-test-srv --closeFirst 5 --cert /opt/boulder/config/secrets/ca/mail-test-srv/cert.pem --key /opt/boulder/config/secrets/ca/mail-test-srv/key.pem" 
+  start program = "/opt/monit/monit-wrapper mail-test-srv start mail-test-srv --closeFirst 5 --cert /opt/boulder/config/test/secrets/ca/mail-test-srv/cert.pem --key /opt/boulder/config/test/secrets/ca/mail-test-srv/key.pem" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper mail-test-srv stop"
   DEPENDS on syslog
   if failed
     port 9380
+    type tcp
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host ocsp-responder with address 127.0.0.1
-  start program = "/opt/monit/monit-wrapper ocsp-responder start ocsp-responder --config /opt/boulder/config/ocsp-responder.json" 
+  start program = "/opt/monit/monit-wrapper ocsp-responder start ocsp-responder --config /opt/boulder/config/test/ocsp-responder.json" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper ocsp-responder stop"
   DEPENDS on syslog
   if failed
     port 8005
+    type tcp
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host boulder-va-1 with address va1.$INTERNAL_DOMAIN
-  start program = "/opt/monit/monit-wrapper boulder-va-1 start boulder-va --config /opt/boulder/config/va.json --addr va1.$INTERNAL_DOMAIN:9092 --debug-addr :8004" 
+  start program = "/opt/monit/monit-wrapper boulder-va-1 start boulder-va --config /opt/boulder/config/test/va.json --addr va1.$INTERNAL_DOMAIN:9092 --debug-addr :8004" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-va-1 stop"
-  DEPENDS on syslog, sd-test-srv, boulder-remoteva-a, boulder-remoteva-b
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv, boulder-remoteva-a, boulder-remoteva-b
   if failed
-    port 9092
+    host 127.0.0.1
+    port 5050
+    protocol http
+    request /health/va-1
     for 10 cycles
   then restart 
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host boulder-va-2 with address va2.$INTERNAL_DOMAIN
-  start program = "/opt/monit/monit-wrapper boulder-va-2 start boulder-va --config /opt/boulder/config/va.json --addr va2.$INTERNAL_DOMAIN:9092 --debug-addr :8104" 
+  start program = "/opt/monit/monit-wrapper boulder-va-2 start boulder-va --config /opt/boulder/config/test/va.json --addr va2.$INTERNAL_DOMAIN:9092 --debug-addr :8104" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-va-2 stop"
-  DEPENDS on syslog, sd-test-srv, boulder-remoteva-a, boulder-remoteva-b
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv, boulder-remoteva-a, boulder-remoteva-b
   if failed
-    port 9092
+    host 127.0.0.1
+    port 5050
+    protocol http
+    request /health/va-1
     for 10 cycles
   then restart 
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host boulder-ca-a with address ca1.$INTERNAL_DOMAIN
-  start program = "/opt/monit/monit-wrapper boulder-ca-a start boulder-ca  --config /opt/boulder/config/ca-a.json --ca-addr ca1.$INTERNAL_DOMAIN:9093 --ocsp-addr ca1.$INTERNAL_DOMAIN:9096 --debug-addr :8001" 
+  start program = "/opt/monit/monit-wrapper boulder-ca-a start boulder-ca  --config /opt/boulder/config/test/ca-a.json --ca-addr ca1.$INTERNAL_DOMAIN:9093 --ocsp-addr ca1.$INTERNAL_DOMAIN:9096 --debug-addr :8001" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-ca-a stop"
-  DEPENDS on syslog, sd-test-srv, boulder-sa-1, boulder-sa-2
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv, boulder-sa-1, boulder-sa-2
   if failed
-    port 9093
+    host 127.0.0.1
+    port 5050
+    protocol http
+    request /health/ca-a
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host boulder-ca-b with address ca2.$INTERNAL_DOMAIN
-  start program = "/opt/monit/monit-wrapper boulder-ca-b start boulder-ca --config /opt/boulder/config/ca-b.json --ca-addr ca2.$INTERNAL_DOMAIN:9093 --ocsp-addr ca2.$INTERNAL_DOMAIN:9096 --debug-addr :8101" 
+  start program = "/opt/monit/monit-wrapper boulder-ca-b start boulder-ca --config /opt/boulder/config/test/ca-b.json --ca-addr ca2.$INTERNAL_DOMAIN:9093 --ocsp-addr ca2.$INTERNAL_DOMAIN:9096 --debug-addr :8101" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-ca-b stop"
-  DEPENDS on syslog, sd-test-srv, boulder-sa-1, boulder-sa-2
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv, boulder-sa-1, boulder-sa-2
   if failed
-    port 9093
+    host 127.0.0.1
+    port 5050
+    protocol http
+    request /health/ca-b
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
@@ -168,115 +211,136 @@ check host akamai-test-srv with address 127.0.0.1
   DEPENDS on syslog
   if failed
     port 6789
+    type tcp
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
-check host akamai-purger with address 127.0.0.1
-  start program = "/opt/monit/monit-wrapper akamai-purger start akamai-purger --config /opt/boulder/config/akamai-purger.json" 
+check host akamai-purger with address akamai-purger.boulder
+  start program = "/opt/monit/monit-wrapper akamai-purger start akamai-purger --config /opt/boulder/config/test/akamai-purger.json" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper akamai-purger stop"
-  DEPENDS on syslog, sd-test-srv, akamai-test-srv
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv, akamai-test-srv
   if failed
-    port 9666
+    host 127.0.0.1
+    port 5050
+    protocol http
+    request /health/akamai-purger
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host ocsp-updater with address 127.0.0.1
-  start program = "/opt/monit/monit-wrapper ocsp-updater start ocsp-updater --config /opt/boulder/config/ocsp-updater.json" 
+  start program = "/opt/monit/monit-wrapper ocsp-updater start ocsp-updater --config /opt/boulder/config/test/ocsp-updater.json" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper ocsp-updater stop"
   DEPENDS on syslog, sd-test-srv, boulder-ca-a, boulder-ca-b
   if failed
     port 8006
+    type tcp
     for 10 cycles
   then restart
 
 check host boulder-ra-1 with address ra1.$INTERNAL_DOMAIN
-  start program = "/opt/monit/monit-wrapper boulder-ra-1 start boulder-ra --config /opt/boulder/config/ra.json --addr ra1.$INTERNAL_DOMAIN:9094 --debug-addr :8002" 
+  start program = "/opt/monit/monit-wrapper boulder-ra-1 start boulder-ra --config /opt/boulder/config/test/ra.json --addr ra1.$INTERNAL_DOMAIN:9094 --debug-addr :8002" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-ra-1 stop"
-  DEPENDS on syslog, sd-test-srv, boulder-sa-1, boulder-sa-2, boulder-ca-a, boulder-ca-b, boulder-va-1, boulder-va-2, akamai-purger, boulder-publisher-1, boulder-publisher-2
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv, boulder-sa-1, boulder-sa-2, boulder-ca-a, boulder-ca-b, boulder-va-1, boulder-va-2, akamai-purger, boulder-publisher-1, boulder-publisher-2
   if failed
-    port 9094
+    host 127.0.0.1
+    port 5050
+    protocol http
+    request /health/ra-1
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host boulder-ra-2 with address ra2.$INTERNAL_DOMAIN
-  start program = "/opt/monit/monit-wrapper boulder-ra-2 start boulder-ra --config /opt/boulder/config/ra.json --addr ra2.$INTERNAL_DOMAIN:9094 --debug-addr :8102" 
+  start program = "/opt/monit/monit-wrapper boulder-ra-2 start boulder-ra --config /opt/boulder/config/test/ra.json --addr ra2.$INTERNAL_DOMAIN:9094 --debug-addr :8102" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-ra-2 stop"
-  DEPENDS on syslog, sd-test-srv, boulder-sa-1, boulder-sa-2, boulder-ca-a, boulder-ca-b, boulder-va-1, boulder-va-2, akamai-purger, boulder-publisher-1, boulder-publisher-2
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv, boulder-sa-1, boulder-sa-2, boulder-ca-a, boulder-ca-b, boulder-va-1, boulder-va-2, akamai-purger, boulder-publisher-1, boulder-publisher-2
   if failed
-    port 9094
+    host 127.0.0.1
+    port 5050
+    protocol http
+    request /health/ra-2
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host bad-key-revoker with address 127.0.0.1
-  start program = "/opt/monit/monit-wrapper bad-key-revoker start bad-key-revoker --config /opt/boulder/config/bad-key-revoker.json" 
+  start program = "/opt/monit/monit-wrapper bad-key-revoker start bad-key-revoker --config /opt/boulder/config/test/bad-key-revoker.json" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper bad-key-revoker stop"
   DEPENDS on syslog, sd-test-srv, boulder-ra-1, boulder-ra-2, mail-test-srv
   if failed
     port 8020
+    type tcp
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host nonce-service-taro with address nonce1.$INTERNAL_DOMAIN
-  start program = "/opt/monit/monit-wrapper nonce-service-taro start nonce-service --config /opt/boulder/config/nonce.json --addr nonce1.$INTERNAL_DOMAIN:9101 --debug-addr :8111 --prefix taro" 
+  start program = "/opt/monit/monit-wrapper nonce-service-taro start nonce-service --config /opt/boulder/config/test/nonce.json --addr nonce1.$INTERNAL_DOMAIN:9101 --debug-addr :8111 --prefix taro" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper nonce-service-taro stop"
-  DEPENDS on syslog, sd-test-srv
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv
   if failed
-    port 9101
+    host 127.0.0.1
+    port 5050
+    protocol http
+    request /health/nonce-taro
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host nonce-service-zinc with address nonce2.$INTERNAL_DOMAIN
-  start program = "/opt/monit/monit-wrapper nonce-service-zinc start nonce-service --config /opt/boulder/config/nonce.json --addr nonce2.$INTERNAL_DOMAIN:9101 --debug-addr :8112 --prefix taro" 
+  start program = "/opt/monit/monit-wrapper nonce-service-zinc start nonce-service --config /opt/boulder/config/test/nonce.json --addr nonce2.$INTERNAL_DOMAIN:9101 --debug-addr :8112 --prefix taro" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper nonce-service-zinc stop"
-  DEPENDS on syslog, sd-test-srv
+  DEPENDS on syslog, grpc-health-proxy, sd-test-srv
   if failed
-    port 9101
+    host 127.0.0.1
+    port 5050
+    protocol http
+    request /health/nonce-zinc
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host boulder-wfe with address 127.0.0.1
-  start program = "/opt/monit/monit-wrapper boulder-wfe start boulder-wfe --config /opt/boulder/config/wfe.json" 
+  start program = "/opt/monit/monit-wrapper boulder-wfe start boulder-wfe --config /opt/boulder/config/test/wfe.json" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-wfe stop"
   DEPENDS on syslog, sd-test-srv, boulder-ra-1, boulder-ra-2, boulder-sa-1, boulder-sa-2, nonce-service-taro, nonce-service-zinc
   if failed
     port 4000
+    type tcp
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host boulder-wfe2 with address 127.0.0.1
-  start program = "/opt/monit/monit-wrapper boulder-wfe2 start boulder-wfe2 --config /opt/boulder/config/wfe2.json" 
+  start program = "/opt/monit/monit-wrapper boulder-wfe2 start boulder-wfe2 --config /opt/boulder/config/test/wfe2.json" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper boulder-wfe2 stop"
   DEPENDS on syslog, sd-test-srv, boulder-ra-1, boulder-ra-2, boulder-sa-1, boulder-sa-2, nonce-service-taro, nonce-service-zinc
   if failed
     port 4001
+    type tcp
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
 
 check host log-validator with address 127.0.0.1
-  start program = "/opt/monit/monit-wrapper log-validator start log-validator --config /opt/boulder/config/log-validator.json" 
+  start program = "/opt/monit/monit-wrapper log-validator start log-validator --config /opt/boulder/config/test/log-validator.json" 
   with timeout 90 seconds
   stop program = "/opt/monit/monit-wrapper log-validator stop"
   DEPENDS on syslog
   if failed
     port 8016
+    type tcp
     for 10 cycles
   then restart
   if 5 restarts within 55 cycles then EXEC "/opt/monit/monit-kill"
