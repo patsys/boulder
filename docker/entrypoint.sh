@@ -9,6 +9,11 @@ for monit in /opt/boulder/template/monit/*; do
   envsubst <$monit >/etc/$(basename $monit)
   chmod 700 /etc/$(basename $monit)
 done
+IFS="
+" for config in find /opt/boulder/template/config/ -type f -printf "%P\n"; do
+  mkidr -p "/opt/boulder/config/$(dirname $config)"
+  envsubst <"/opt/boulder/template/config/$config" >"/opt/boulder/config/$config"
+done
 mkdir -p /opt/grpc-health-proxy/config/boulder
 for proxy in /opt/boulder/template/grpc-health-proxy/*; do
   envsubst <$proxy >/opt/grpc-health-proxy/config/boulder/$(basename $proxy)
