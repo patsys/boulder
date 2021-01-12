@@ -12,7 +12,12 @@ done
 IFS="
 " for config in find /opt/boulder/template/config/ -type f -printf "%P\n"; do
   mkidr -p "/opt/boulder/config/$(dirname $config)"
-  envsubst <"/opt/boulder/template/config/$config" >"/opt/boulder/config/$config"
+  nconfig="$( echo "$config" | sed 's/^_\(.*\)\.\(yaml\|yml\)$/\1.json/g')"
+  if [ "$config" != "$nconfig" ]; then
+    envsubst <"/opt/boulder/template/config/$config" yaml2json >"/opt/boulder/config/$nconfig"
+  else
+    envsubst <"/opt/boulder/template/config/$config" >"/opt/boulder/config/$config"
+  fi
 done
 mkdir -p /opt/grpc-health-proxy/config/boulder
 for proxy in /opt/boulder/template/grpc-health-proxy/*; do

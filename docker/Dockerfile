@@ -50,7 +50,8 @@ RUN apk --no-cache add \
   monit \
   softhsm \
   curl \
-  mysql-client
+  mysql-client \
+  && curl -Lo yaml2json https://github.com/wakeful/yaml2json/releases/latest/download/yaml2json-linux-amd64 && chmod ugo+x yaml2json && mv yaml2json /usr/local/bin/
 
 COPY entrypoint.sh /opt/entrypoint
 COPY conf/monit/* /opt/boulder/template/monit/
